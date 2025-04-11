@@ -37,9 +37,9 @@ void runShell() {
         std::cout << "$ ";
         std::getline(std::cin, command);
         //std::cin >> command;
-        if (command == "exit 0") {}//{break;}
+        //if (command == "exit 0") {break;}
         //else if  (command.empty()) {continue;}
-        else {std::cout << command << ": command not found";}
+        /*else*/ {std::cout << command << ": command not found";}
         //echo(command);
         
 
