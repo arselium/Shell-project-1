@@ -14,6 +14,11 @@ FROM alpine:latest
 
 WORKDIR /app
 
+# Установка переменной окружения HOME
+ENV HOME=/home/user
+# Создаём домашний каталог
+RUN mkdir -p /home/user
+
 # Копируем только бинарник из первой стадии
 COPY --from=builder /app/hello .
 
@@ -21,5 +26,4 @@ COPY --from=builder /app/hello .
 CMD ["./hello"]
 
 #docker build -t hello-world .
-#docker run -it hello-world
-# Не забыть его остановить и удалить !!!
+#docker run -it --rm hello-world

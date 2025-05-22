@@ -3,7 +3,7 @@
 #include <vector>
 #include <map>
 #include <cstdlib>  // для getenv
-#include <unistd.h> // для access, getcwd
+#include <unistd.h> // для access, getcwd, chdir
 #include <sys/wait.h> // для waitpid
 #include <cstring>  // для strerror
 using namespace std;
@@ -35,10 +35,10 @@ void echo(const vector<string>& args) {
 
 // Функция exit
 void exitShell(const vector<string>& args) {
-    if (args[1] == "0"){
+    if (args.size() > 1 && args[1] == "0") {
         exit(0);
     } else {
-        std::cout << ": command not found\n";
+        cout << ": command not found\n";
     }
 }
 
@@ -50,6 +50,41 @@ void pwd(const vector<string>& args) {
     } else {
         cout << "pwd: error getting current directory" << endl;
     }
+}
+
+// Функция cd
+void cd(const vector<string>& args) {
+    string path;
+    // Если аргумент не указан, переходим в HOME
+    if (args.size() < 2) {
+        const char* home = getenv("HOME");
+        path = home;
+    } else {
+        path = args[1];
+        // Обработка тильды
+        if (path == "~") {
+            const char* home = getenv("HOME");
+            // home задан, но пусть будет если что
+            if (home == nullptr) {
+                cout << "cd: HOME not set" << endl;
+                return;
+            } // ---home задан---
+
+            path = home;
+        } else if (path.find("~/") == 0) {
+            const char* home = getenv("HOME");
+            path = string(home) + path.substr(1);
+        }
+    }
+
+    // Проверка существования пути
+    if (access(path.c_str(), F_OK) != 0) {
+        cout << "cd: " << path << ": No such file or directory" << endl;
+        return;
+    }
+
+    // Смена текущего каталога
+    chdir(path.c_str())
 }
 
 // Функция для поиска исполняемого файла в PATH
@@ -114,6 +149,7 @@ void type(const vector<string>& args) {
     commandMap["exit"] = exitShell;
     commandMap["type"] = type;
     commandMap["pwd"] = pwd;
+    commandMap["cd"] = cd;
 
     string commandToCheck = args[1];
     
@@ -140,9 +176,11 @@ void runShell() {
     commandMap["exit"] = exitShell;
     commandMap["type"] = type;
     commandMap["pwd"] = pwd;
+    commandMap["cd"] = cd;
     
     while (true) {
         cout << "$ ";
+        cout.flush(); // Гарантируем вывод приглашения
         getline(cin, command);
 
         if (command.empty()) {
