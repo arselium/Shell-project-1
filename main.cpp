@@ -8,17 +8,46 @@
 #include <cstring>  // для strerror
 using namespace std;
 
-// Функция split
-vector<string> split(string& s, const string& delimiter) {
+// Функция split с учетом одинарных кавычек
+vector<string> newSplit(const string& input) {
     vector<string> tokens;
-    size_t pos = 0;
     string token;
-    while ((pos = s.find(delimiter)) != string::npos) {
-        token = s.substr(0, pos);
-        tokens.push_back(token);
-        s.erase(0, pos + delimiter.length());
+    bool in_quotes = false;
+    bool escape = false;
+
+    for (size_t i = 0; i < input.length(); ++i) {
+        char c = input[i];
+
+        // если текущий символ '
+        if (c == '\'') {
+            if (in_quotes) {
+                // Закрываем кавычки
+                tokens.push_back(token);
+                token.clear();
+                in_quotes = false;
+            } else {
+                // Открываем кавычки
+                in_quotes = true;
+            }
+            continue;
+        }
+
+        if (c == ' ' && !in_quotes) {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+            continue;
+        }
+
+        token += c;
     }
-    tokens.push_back(s);
+
+    // Добавляем последний токен, если он есть
+    if (!token.empty()) {
+        tokens.push_back(token);
+    }
+
     return tokens;
 }
 
@@ -27,8 +56,11 @@ using CommandFunction = void(*)(const vector<string>&);
 
 // Функция echo
 void echo(const vector<string>& args) {
-    for (size_t i = 1; i < args.size(); i++) {
-        cout << args[i] << " ";
+    for (size_t i = 1; i < args.size(); ++i) {
+        cout << args[i];
+        if (i < args.size() - 1) {
+            cout << " ";
+        }
     }
     cout << endl;
 }
@@ -84,7 +116,9 @@ void cd(const vector<string>& args) {
     }
 
     // Смена текущего каталога
-    chdir(path.c_str())
+    if (chdir(path.c_str()) != 0) { 
+        cout << "cd: " << path << ": No such file or directory" << endl;
+    }
 }
 
 // Функция для поиска исполняемого файла в PATH
@@ -95,7 +129,15 @@ string findInPath(const string& command) {
     }
 
     string pathStr = pathEnv;
-    vector<string> directories = split(pathStr, ":");
+    vector<string> directories;
+    size_t pos = 0;
+    string dir;
+    while ((pos = pathStr.find(":")) != string::npos) {
+        dir = pathStr.substr(0, pos);
+        directories.push_back(dir);
+        pathStr.erase(0, pos + 1);
+    }
+    directories.push_back(pathStr);
 
     for (const string& dir : directories) {
         string fullPath = dir + "/" + command;
@@ -187,7 +229,7 @@ void runShell() {
             continue;
         }
 
-        vector<string> tokens = split(command, " ");
+        vector<string> tokens = newSplit(command);
         string cmdName = tokens[0];
 
         auto it = commandMap.find(cmdName);
