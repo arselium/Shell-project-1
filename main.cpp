@@ -3,6 +3,9 @@
 #include <vector>
 #include <map>
 #include <cstdlib>  // для getenv
+#include <unistd.h> // для access, getcwd, chdir
+#include <sys/wait.h> // для waitpid
+#include <cstring>  // для strerror
 using namespace std;
 
 // Указатель на функцию
@@ -52,6 +55,64 @@ void exitShell(const vector<string>& args) {
     }
 }
 
+// Функция для поиска исполняемого файла в PATH
+string findInPath(const string& command) {
+    const char* pathEnv = getenv("PATH");
+    if (!pathEnv) {
+        return "";
+    }
+
+    string pathStr = pathEnv;
+    vector<string> directories;
+    size_t pos = 0;
+    string dir;
+    while ((pos = pathStr.find(":")) != string::npos) {
+        dir = pathStr.substr(0, pos);
+        directories.push_back(dir);
+        pathStr.erase(0, pos + 1);
+    }
+    directories.push_back(pathStr);
+
+    for (const string& dir : directories) {
+        string fullPath = dir + "/" + command;
+        if (access(fullPath.c_str(), X_OK) == 0) {
+            return fullPath;
+        }
+    }
+    return "";
+}
+
+// Функция для выполнения внешних программ
+void executeExternal(const vector<string>& args) {
+    string path = findInPath(args[0]);
+    if (path.empty()) {
+        cout << args[0] << ": command not found\n";
+        return;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        cout << "fork failed: " << strerror(errno) << endl;
+        return;
+    }
+
+    if (pid == 0) { // Дочерний процесс
+        vector<char*> c_args;
+        for (const auto& arg : args) {
+            c_args.push_back(const_cast<char*>(arg.c_str()));
+        }
+        c_args.push_back(nullptr);
+
+        execv(path.c_str(), c_args.data());
+        // Если execv вернул управление, значит произошла ошибка
+        cout << "exec failed: " << strerror(errno) << endl;
+        exit(1);
+    } else { // Родительский процесс
+        int status;
+        waitpid(pid, &status, 0);
+    }
+}
+
 // Функция type
 void type(const vector<string>& args) {
     if (args.size() < 2) {
@@ -70,16 +131,14 @@ void type(const vector<string>& args) {
     if (it != commandMap.end()) {
         cout << commandToCheck << " is a shell builtin" << endl;
         return;
-    } else {
-        cout << commandToCheck << ": command not found" << endl;
     }
 
-    /*string path = findInPath(commandToCheck);
+    string path = findInPath(commandToCheck);
     if (!path.empty()) {
         cout << commandToCheck << " is " << path << endl;
     } else {
-        cout << commandToCheck << ": not found" << endl;
-    }*/
+        cout << commandToCheck << ": command not found" << endl;
+    }
 }
 
 void runShell() {
@@ -92,6 +151,7 @@ void runShell() {
 
     while (true) {
         cout << "$ ";
+        cout.flush();
         getline(cin, command);
 
         if (command.empty()) {
@@ -99,14 +159,18 @@ void runShell() {
         }
 
         vector<string> tokens = split(command);
+        if (tokens.empty()) {
+            continue;
+        }
+
         string cmdName = tokens[0];
 
         auto it = commandMap.find(cmdName);
         if (it != commandMap.end()) {
             it->second(tokens);
         } else {
-            std::cout << command << ": command not found";
-            std::cout << std::endl;
+            // Пытаемся выполнить как внешнюю команду
+            executeExternal(tokens);
         }
     }
 }
