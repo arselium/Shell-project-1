@@ -8,15 +8,45 @@
 #include <cstring>  // для strerror
 using namespace std;
 
-// Функция Split с учетом одинарных и двойных кавычек
+// Функция Split с учетом одинарных, двойных кавычек и экранирования
 vector<string> newSplit(const string& input) {
     vector<string> tokens;
     string token;
     bool in_single_quotes = false;
     bool in_double_quotes = false;
+    bool escape = false;
 
     for (size_t i = 0; i < input.length(); ++i) {
         char c = input[i];
+
+        // Экранирование
+        if (escape) {
+            if (in_double_quotes) {
+                // В двойных кавычках экранируем только \, $, ", newline
+                if (c == '\\' || c == '$' || c == '"' || c == '\n') {
+                    token += '\\'; // правка 12 лабы (чтобы было без 13)
+                    token += c;
+                } else {
+                    // Для других символов сохраняем обратную косую черту буквально
+                    token += '\\';
+                    token += c;
+                }
+            } else if (!in_single_quotes) {
+                // Вне кавычек экранируем следующий символ буквально
+                token += c;
+            } else {
+                // В одинарных кавычках сохраняем буквально
+                token += '\\';
+                token += c;
+            }
+            escape = false;
+            continue;
+        }
+        // Если встретитили '\'
+        if (c == '\\') {
+            escape = true;
+            continue;
+        }
         // Если встретили ' вне ""
         if (c == '\'' && !in_double_quotes) {
             if (in_single_quotes) {
