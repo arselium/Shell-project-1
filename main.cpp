@@ -52,12 +52,43 @@ void exitShell(const vector<string>& args) {
     }
 }
 
+// Функция type
+void type(const vector<string>& args) {
+    if (args.size() < 2) {
+        cout << "type: missing argument" << endl;
+        return;
+    }
+
+    map<string, CommandFunction> commandMap;
+    commandMap["echo"] = echo;
+    commandMap["exit"] = exitShell;
+    commandMap["type"] = type;
+
+    string commandToCheck = args[1];
+    
+    auto it = commandMap.find(commandToCheck);
+    if (it != commandMap.end()) {
+        cout << commandToCheck << " is a shell builtin" << endl;
+        return;
+    } else {
+        cout << commandToCheck << ": command not found" << endl;
+    }
+
+    /*string path = findInPath(commandToCheck);
+    if (!path.empty()) {
+        cout << commandToCheck << " is " << path << endl;
+    } else {
+        cout << commandToCheck << ": not found" << endl;
+    }*/
+}
+
 void runShell() {
     string command;
     
     map<string, CommandFunction> commandMap;
     commandMap["echo"] = echo;
     commandMap["exit"] = exitShell;
+    commandMap["type"] = type;
 
     while (true) {
         cout << "$ ";
