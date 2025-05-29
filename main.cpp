@@ -8,31 +8,43 @@
 #include <cstring>  // для strerror
 using namespace std;
 
-// Функция split с учетом одинарных кавычек
+// Функция Split с учетом одинарных и двойных кавычек
 vector<string> newSplit(const string& input) {
     vector<string> tokens;
     string token;
-    bool in_quotes = false;
-    bool escape = false;
+    bool in_single_quotes = false;
+    bool in_double_quotes = false;
 
     for (size_t i = 0; i < input.length(); ++i) {
         char c = input[i];
-
-        // если текущий символ '
-        if (c == '\'') {
-            if (in_quotes) {
-                // Закрываем кавычки
+        // Если встретили ' вне ""
+        if (c == '\'' && !in_double_quotes) {
+            if (in_single_quotes) {
+                // Закрываем одинарные кавычки
                 tokens.push_back(token);
                 token.clear();
-                in_quotes = false;
+                in_single_quotes = false;
             } else {
-                // Открываем кавычки
-                in_quotes = true;
+                // Открываем одинарные кавычки
+                in_single_quotes = true;
+            }
+            continue;
+        }
+        // Если встретили " вне ''
+        if (c == '"' && !in_single_quotes) {
+            if (in_double_quotes) {
+                // Закрываем двойные кавычки
+                tokens.push_back(token);
+                token.clear();
+                in_double_quotes = false;
+            } else {
+                // Открываем двойные кавычки
+                in_double_quotes = true;
             }
             continue;
         }
 
-        if (c == ' ' && !in_quotes) {
+        if (c == ' ' && !in_single_quotes && !in_double_quotes) {
             if (!token.empty()) {
                 tokens.push_back(token);
                 token.clear();
@@ -230,6 +242,10 @@ void runShell() {
         }
 
         vector<string> tokens = newSplit(command);
+        if (tokens.empty()) {
+            continue;
+        }
+
         string cmdName = tokens[0];
 
         auto it = commandMap.find(cmdName);
