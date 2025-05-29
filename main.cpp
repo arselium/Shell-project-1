@@ -33,18 +33,10 @@ void echo(string command){
 
 void runShell() {
     std::string command;
-    //while (true) {
         std::cout << "$ ";
         std::getline(std::cin, command);
-        //std::cin >> command;
-        if (command == "exit 0") {}//{break;}
-        //else if  (command.empty()) {continue;}
-        else {std::cout << command << ": command not found";}
-        //echo(command);
-        
-
+        std::cout << command << ": command not found";
     std::cout << std::endl;
-    //}
 
 }
 
